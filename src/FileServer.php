@@ -13,6 +13,7 @@ class FileServer
 		$this->initializeQuerySocket($context, $queryDSNs);
 		$this->initializeRootDirectory($rootDirectory);
 		$this->initializePoll();
+		$this->logf('Info: listening...');
 	}
 
 	private function logf(string $format, ...$args): void
