@@ -1,6 +1,7 @@
 # `zmq-fileserver`
 
 This is a simple fileserver written in PHP (7.4+) using [ZeroMQ](https://zeromq.org/).  
+It requires `ext-zmq` and PHP7.4+.  
 
 There are three executable files:
 - `$ bin/server` runs the fileserver
