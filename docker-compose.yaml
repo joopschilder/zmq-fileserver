@@ -1,0 +1,13 @@
+version: "3"
+services:
+  server:
+    build:
+      context: .
+      dockerfile: ./docker/server/Dockerfile
+    volumes:
+      # You may add volumes for IPC binding here too
+      - ./var:/usr/src/fileserver/var
+    ports:
+      - 5678:5678
+      - 5679:5679
+
