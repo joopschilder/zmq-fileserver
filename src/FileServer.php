@@ -15,6 +15,11 @@ class FileServer
 		$this->initializePoll();
 	}
 
+	private function logf(string $format, ...$args): void
+	{
+		printf("[%s]  %s%s", date('H:i:s'), sprintf($format, ...$args), PHP_EOL);
+	}
+
 	private function initializeRootDirectory(string $rootDirectory): void
 	{
 		$this->rootDirectory = rtrim($rootDirectory, DIRECTORY_SEPARATOR);
@@ -22,14 +27,16 @@ class FileServer
 			mkdir($this->rootDirectory, 0777, true);
 		}
 		if (!is_dir($this->rootDirectory)) {
-			throw new RuntimeException("Unable to create directory '{$this->rootDirectory}'");
+			$this->logf('Error: unable to create directory \'%s\'', $this->rootDirectory);
+			die(1);
 		}
 	}
 
 	private function initializeCommandSocket(ZMQContext $context, array $commandDSNs): void
 	{
 		if (count($commandDSNs) === 0) {
-			throw new InvalidArgumentException("At least one binding required");
+			$this->logf('Error: need at least one DSN for the command socket');
+			die(1);
 		}
 		$this->commandSocket = new ZMQSocket($context, ZMQ::SOCKET_PULL);
 		$this->commandSocket->setSockOpt(ZMQ::SOCKOPT_HWM, 5);
@@ -41,7 +48,8 @@ class FileServer
 	private function initializeQuerySocket(ZMQContext $context, array $queryDSNs): void
 	{
 		if (count($queryDSNs) === 0) {
-			throw new InvalidArgumentException("At least one binding required");
+			$this->logf('Error: need at least one DSN for the query socket');
+			die(1);
 		}
 		$this->querySocket = new ZMQSocket($context, ZMQ::SOCKET_REP);
 		$this->querySocket->setSockOpt(ZMQ::SOCKOPT_HWM, 5);
@@ -77,7 +85,7 @@ class FileServer
 			case 'LOAD':
 				if (count($arguments) !== 2) {
 					$this->querySocket->send(-1);
-					$this->onNotEnoughArguments($query, 2, count($arguments));
+					$this->onUnexpectedAmountOfArguments($query, 2, count($arguments));
 					return;
 				}
 				$this->querySocket->send(@file_get_contents("{$this->rootDirectory}/{$arguments[0]}/{$arguments[1]}") ?: -1);
@@ -85,7 +93,7 @@ class FileServer
 			case 'CONTAINS':
 				if (count($arguments) !== 2) {
 					$this->querySocket->send(-1);
-					$this->onNotEnoughArguments($query, 2, count($arguments));
+					$this->onUnexpectedAmountOfArguments($query, 2, count($arguments));
 					return;
 				}
 				$this->querySocket->send(file_exists("{$this->rootDirectory}/{$arguments[0]}/{$arguments[1]}") ? 'Y' : 'N');
@@ -104,21 +112,21 @@ class FileServer
 		switch ($command) {
 			case 'SAVE':
 				if (count($arguments) !== 3) {
-					$this->onNotEnoughArguments($command, 3, count($arguments));
+					$this->onUnexpectedAmountOfArguments($command, 3, count($arguments));
 					return;
 				}
 				$this->saveFile($arguments[0], $arguments[1], $arguments[2]);
 				break;
 			case 'DELETE':
 				if (count($arguments) !== 2) {
-					$this->onNotEnoughArguments($command, 2, count($arguments));
+					$this->onUnexpectedAmountOfArguments($command, 2, count($arguments));
 					return;
 				}
 				$this->deleteFile($arguments[0], $arguments[1]);
 				break;
 			case 'DELETE_ALL':
 				if (count($arguments) !== 1) {
-					$this->onNotEnoughArguments($command, 1, count($arguments));
+					$this->onUnexpectedAmountOfArguments($command, 1, count($arguments));
 					return;
 				}
 				$this->deleteAll($arguments[0]);
@@ -129,15 +137,15 @@ class FileServer
 		}
 	}
 
-	private function onNotEnoughArguments(string $input, int $expected, int $actual): void
+	private function onUnexpectedAmountOfArguments(string $input, int $expected, int $actual): void
 	{
-		printf(date('[H:i:s]') . " Error: unexpected amount of arguments for input '%s' (%d/%d)\n", $input, $actual, $expected);
+		$this->logf('Error: unexpected amount of arguments for input \'%s\' (%d/%d)', $input, $actual, $expected);
 	}
 
 	private function onUnknownInput(string $input, array $arguments): void
 	{
 		$arguments = array_map(fn($v) => substr($v, 0, 12), $arguments);
-		printf(date('[H:i:s]') . " Error: unknown input '%s' with arguments [%s]\n", $input, implode(', ', $arguments));
+		$this->logf('Error: unknown input \'%s\' with arguments [%s]', $input, implode(', ', $arguments));
 	}
 
 	private function saveFile(string &$namespace, string &$name, string &$content): void
