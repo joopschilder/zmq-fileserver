@@ -1,0 +1,10 @@
+#!/usr/bin/env php
+<?php
+
+require_once __DIR__ . '/src/FileServer.php';
+
+$dir = ($argv[1] ?? __DIR__ . '/var/documents');
+$commandEndpoints = ['ipc:///tmp/storage_server_command.ipc'];
+$queryEndpoints = ['ipc:///tmp/storage_server_query.ipc'];
+(new FileServer($dir, new ZMQContext(), $commandEndpoints, $queryEndpoints))->run();
+
