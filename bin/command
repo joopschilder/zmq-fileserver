@@ -1,0 +1,13 @@
+#!/usr/bin/env php
+<?php
+
+array_shift($argv);
+if (count($argv) === 0) {
+	print('command needs at least one argument' . PHP_EOL);
+	die(1);
+}
+
+$ini = parse_ini_file(__DIR__ . '/../config/config.ini', true)['command'];
+$socket = new ZMQSocket(new ZMQContext, ZMQ::SOCKET_PUSH);
+$socket->connect($ini['dsn']);
+$socket->sendmulti($argv);

@@ -3,10 +3,9 @@
 This is a simple fileserver written in PHP (7.4+) using [ZeroMQ](https://zeromq.org/).  
 
 There are three executable files:
-
-- `$ ./server` runs the fileserver
-- `$ ./command <arg1> <arg2> ...` sends a command to the server
-- `$ ./query <arg1> <arg2> ...` sends a query to the server and returns the response
+- `$ bin/server` runs the fileserver
+- `$ bin/command <arg1> <arg2> ...` sends a command to the server
+- `$ bin/query <arg1> <arg2> ...` sends a query to the server and returns the response
 
 ## Commands
 
@@ -15,9 +14,8 @@ There are three executable files:
 - `DELETE_ALL <namespace>` deletes an entire namespace
 
 To save a file to the fileserver you can do:  
-`$ ./command SAVE my-project-namespace 1.html "<!DOCTYPE html><html>...</html>"`  
-`$ ./command SAVE my-project-namespace 2.xml "$(cat some/xml/file)"`  
-
+`$ bin/command SAVE my-project-namespace 1.html "<!DOCTYPE html><html>...</html>"`  
+`$ bin/command SAVE my-project-namespace 2.xml "$(cat some/xml/file)"`  
 
 ## Queries
 
@@ -25,5 +23,8 @@ To save a file to the fileserver you can do:
 - `LOAD <namespace> <name>` returns the file contents if it exists, else `-1`
 
 To load a file from the fileserver you can do:  
-`$ ./query LOAD my-project-namespace 1.html`
+`$ bin/query LOAD my-project-namespace 1.html`
 
+## Configuration
+
+See `config/config.ini`. It contains an example configuration.

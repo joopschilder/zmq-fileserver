@@ -1,6 +1,5 @@
 <?php
 
-
 class FileServer
 {
 	private ZMQSocket $commandSocket;
@@ -8,11 +7,11 @@ class FileServer
 	private ZMQPoll $poll;
 	private string $rootDirectory;
 
-	public function __construct(string $rootDirectory, ZMQContext $context, array $commandDsns, array $queryDsns)
+	public function __construct(ZMQContext $context, string $rootDirectory, array $commandDSNs, array $queryDSNs)
 	{
+		$this->initializeCommandSocket($context, $commandDSNs);
+		$this->initializeQuerySocket($context, $queryDSNs);
 		$this->initializeRootDirectory($rootDirectory);
-		$this->initializeCommandSocket($context, $commandDsns);
-		$this->initializeQuerySocket($context, $queryDsns);
 		$this->initializePoll();
 	}
 
@@ -22,28 +21,31 @@ class FileServer
 		if (!is_dir($this->rootDirectory)) {
 			mkdir($this->rootDirectory, 0777, true);
 		}
+		if (!is_dir($this->rootDirectory)) {
+			throw new RuntimeException("Unable to create directory '{$this->rootDirectory}'");
+		}
 	}
 
-	private function initializeCommandSocket(ZMQContext $context, array $bindings): void
+	private function initializeCommandSocket(ZMQContext $context, array $commandDSNs): void
 	{
-		if (count($bindings) === 0) {
+		if (count($commandDSNs) === 0) {
 			throw new InvalidArgumentException("At least one binding required");
 		}
 		$this->commandSocket = new ZMQSocket($context, ZMQ::SOCKET_PULL);
 		$this->commandSocket->setSockOpt(ZMQ::SOCKOPT_HWM, 5);
-		foreach ($bindings as $dsn) {
+		foreach ($commandDSNs as $dsn) {
 			$this->commandSocket->bind($dsn);
 		}
 	}
 
-	private function initializeQuerySocket(ZMQContext $context, array $bindings): void
+	private function initializeQuerySocket(ZMQContext $context, array $queryDSNs): void
 	{
-		if (count($bindings) === 0) {
+		if (count($queryDSNs) === 0) {
 			throw new InvalidArgumentException("At least one binding required");
 		}
 		$this->querySocket = new ZMQSocket($context, ZMQ::SOCKET_REP);
 		$this->querySocket->setSockOpt(ZMQ::SOCKOPT_HWM, 5);
-		foreach ($bindings as $dsn) {
+		foreach ($queryDSNs as $dsn) {
 			$this->querySocket->bind($dsn);
 		}
 	}
@@ -75,7 +77,7 @@ class FileServer
 			case 'LOAD':
 				if (count($arguments) !== 2) {
 					$this->querySocket->send(-1);
-					print("Malformed LOAD query\n");
+					$this->onNotEnoughArguments($query, 2, count($arguments));
 					return;
 				}
 				$this->querySocket->send(@file_get_contents("{$this->rootDirectory}/{$arguments[0]}/{$arguments[1]}") ?: -1);
@@ -83,7 +85,7 @@ class FileServer
 			case 'CONTAINS':
 				if (count($arguments) !== 2) {
 					$this->querySocket->send(-1);
-					print("Malformed CONTAINS query\n");
+					$this->onNotEnoughArguments($query, 2, count($arguments));
 					return;
 				}
 				$this->querySocket->send(file_exists("{$this->rootDirectory}/{$arguments[0]}/{$arguments[1]}") ? 'Y' : 'N');
@@ -102,21 +104,22 @@ class FileServer
 		switch ($command) {
 			case 'SAVE':
 				if (count($arguments) !== 3) {
-					print("Malformed SAVE command\n");
+					$this->onNotEnoughArguments($command, 3, count($arguments));
 					return;
 				}
 				$this->saveFile($arguments[0], $arguments[1], $arguments[2]);
 				break;
 			case 'DELETE':
 				if (count($arguments) !== 2) {
-					print("Malformed DELETE command\n");
+					$this->onNotEnoughArguments($command, 2, count($arguments));
 					return;
 				}
 				$this->deleteFile($arguments[0], $arguments[1]);
 				break;
 			case 'DELETE_ALL':
 				if (count($arguments) !== 1) {
-					print("Malformed DELETE_ALL command\n");
+					$this->onNotEnoughArguments($command, 1, count($arguments));
+					return;
 				}
 				$this->deleteAll($arguments[0]);
 				break;
@@ -126,10 +129,15 @@ class FileServer
 		}
 	}
 
+	private function onNotEnoughArguments(string $input, int $expected, int $actual): void
+	{
+		printf(date('[H:i:s]') . " Error: unexpected amount of arguments for input '%s' (%d/%d)\n", $input, $actual, $expected);
+	}
+
 	private function onUnknownInput(string $input, array $arguments): void
 	{
 		$arguments = array_map(fn($v) => substr($v, 0, 12), $arguments);
-		printf("Unknown input '%s' with args (%s)\n", $input, implode(', ', $arguments));
+		printf(date('[H:i:s]') . " Error: unknown input '%s' with arguments [%s]\n", $input, implode(', ', $arguments));
 	}
 
 	private function saveFile(string &$namespace, string &$name, string &$content): void

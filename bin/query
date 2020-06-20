@@ -1,0 +1,15 @@
+#!/usr/bin/env php
+<?php
+
+array_shift($argv);
+if (count($argv) === 0) {
+	print('query needs at least one argument' . PHP_EOL);
+	die(1);
+}
+
+$ini = parse_ini_file(__DIR__ . '/../config/config.ini', true)['query'];
+$socket = new ZMQSocket(new ZMQContext, ZMQ::SOCKET_REQ);
+$socket->connect($ini['dsn']);
+$socket->sendmulti($argv);
+print(implode(PHP_EOL, $socket->recvMulti()));
+print(PHP_EOL);

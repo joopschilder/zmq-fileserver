@@ -1,0 +1,10 @@
+#!/usr/bin/env php
+<?php
+
+require_once __DIR__ . '/../src/FileServer.php';
+
+$ini = parse_ini_file(__DIR__ . '/../config/config.ini', true)['server'];
+$ini['storage_dir'] = str_replace('%ROOT_DIR%', realpath(__DIR__ . '/..'), $ini['storage_dir']);
+
+$server = new FileServer(new ZMQContext, $ini['storage_dir'], $ini['command_dsn'], $ini['query_dsn']);
+$server->run();
